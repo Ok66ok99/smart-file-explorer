@@ -12,10 +12,22 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
       - name: Install Flutter
         uses: subosito/flutter-action@v2
         with:
           channel: stable
+
+      - name: Install Android SDK 36
+        run: |
+          yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" \
+            "platforms;android-36" \
+            "build-tools;36.0.0" || true
 
       - name: Extract project
         run: |
@@ -27,6 +39,31 @@ jobs:
         working-directory: smart_file_explorer
         run: |
           flutter create --platforms=android --project-name smart_file_explorer .
+
+      - name: Set compileSdk to 36
+        working-directory: smart_file_explorer
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+
+          p = Path("android/app/build.gradle.kts")
+          if p.exists():
+              s = p.read_text()
+              s = re.sub(
+                  r'compileSdk\s*=\s*flutter\.compileSdkVersion',
+                  'compileSdk = 36', s
+              )
+          else:
+              p = Path("android/app/build.gradle")
+              s = p.read_text()
+              s = re.sub(
+                  r'compileSdkVersion\s+flutter\.compileSdkVersion',
+                  'compileSdkVersion 36', s
+              )
+          p.write_text(s)
+          print("Updated:", p)
+          PY
 
       - name: Install dependencies
         working-directory: smart_file_explorer
